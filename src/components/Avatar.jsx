@@ -104,6 +104,11 @@ const corresponding = {
   X: "viseme_PP",
 };
 
+// Animation mapping for animations that don't exist in the GLB file
+const animationMapping = {
+  "Standing": "Idle", // Map Standing to Idle animation
+};
+
 let setupMode = false;
 
 export function Avatar(props) {
@@ -111,7 +116,7 @@ export function Avatar(props) {
     "/models/64f1a714fe61576b46f27ca2.glb"
   );
 
-  const { message, onMessagePlayed, chat } = useChat();
+  const { message, onMessagePlayed, chat, audioEnabled } = useChat();
 
   const [lipsync, setLipsync] = useState();
 
@@ -121,14 +126,35 @@ export function Avatar(props) {
       setAnimation("Idle");
       return;
     }
-    setAnimation(message.animation);
+    // Use animation mapping if the animation doesn't exist
+    const mappedAnimation = animationMapping[message.animation] || message.animation;
+    setAnimation(mappedAnimation);
     setFacialExpression(message.facialExpression);
     setLipsync(message.lipsync);
+    
     const audio = new Audio("data:audio/mp3;base64," + message.audio);
-    audio.play();
+    
+    // Handle autoplay policy
+    const playAudio = async () => {
+      if (!audioEnabled) {
+        console.warn("Audio not enabled yet - user interaction required");
+        return;
+      }
+      
+      try {
+        await audio.play();
+        console.log("Audio playing successfully");
+      } catch (error) {
+        console.warn("Audio autoplay blocked:", error);
+        // If autoplay is blocked, we can try to play after user interaction
+        // For now, we'll just log the error and continue with lip sync
+      }
+    };
+    
+    playAudio();
     setAudio(audio);
     audio.onended = onMessagePlayed;
-  }, [message]);
+  }, [message, audioEnabled]);
 
   const { animations } = useGLTF("/models/animations.glb");
 
